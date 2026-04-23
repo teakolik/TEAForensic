@@ -8,7 +8,7 @@ TEA Security | v1.2.0
 ## Genel Bakış
 
 TEA Forensic Collector, Windows sistemlerinden kapsamlı forensic artifact toplayan,
-zararlı yazılım tespiti yapan ve sonuçları **tek, bağımsız HTML raporu** olarak sunan
+zararlı yazılım tespiti yapan ve sonuçları **HTML raporu** olarak sunan
 bir DFIR aracıdır.
 
 **Build edildikten sonra hedef makinede Python kurulumu gerekmez.**  
@@ -52,14 +52,11 @@ dist\TEADFIR.exe -o C:\evidence --no-elevate
 
 ## Sık Sorulan Sorular
 
-**❓ `-o C:\evidence` klasörü önceden oluşturmam gerekiyor mu?**  
-Hayır. Klasör yoksa EXE otomatik oluşturur.
-
-**❓ Hedef makinede Python kurulu olmalı mı?**  
+**Hedef makinede Python kurulu olmalı mı?**  
 Hayır. Build sırasında PyInstaller tüm kütüphaneleri EXE içine gömer.
 `TEADFIR.exe` tek başına çalışır, Python gerektirmez.
 
-**❓ `--yara-rules` klasörü oluşturmam gerekiyor mu?**  
+**yara-rules klasörü oluşturmam gerekiyor mu?**  
 Hayır. YARA kuralları (`yara_rules/common.yar`) build sırasında EXE içine gömülür.
 `--yara-rules` sadece **ek özel kural eklemek** istersen kullanılır:
 
@@ -70,16 +67,16 @@ REM Kendi .yar dosyalarını ekle
 dist\TEADFIR.exe -o C:\evidence --yara-rules C:\my_rules
 ```
 
-**❓ YARA çalışıyor mu nasıl anlarım?**  
+**YARA çalışıyor mu nasıl anlarım?**  
 HTML raporda `YARA Scan` bölümünde `BACKEND: yara-x` ve `RULES_LOADED: 1+` görünüyorsa aktif.
 
-**❓ yara-python kurulmuyor, C++ hatası alıyorum.**  
+**yara-python kurulmuyor, C++ hatası alıyorum.**  
 `yara-python` yerine `yara-x` kullan — C++ Build Tools gerektirmez:
 ```cmd
 python -m pip install yara-x
 ```
 
-**❓ IOC listesini nasıl güncellerim?**  
+**IOC listesini nasıl güncellerim?**  
 `ioc\hashes.txt` ve `ioc\network_ioc.txt` dosyalarını düzenle, ardından `.\build.bat` ile
 yeniden build al. Güncel feed kaynakları: MalwareBazaar, Abuse.ch, MISP, OpenCTI.
 
@@ -104,11 +101,10 @@ dist\TEADFIR.exe [seçenekler]
 
 | Gereksinim | Durum |
 |---|---|
-| Python | ❌ Gerekmez |
-| İnternet bağlantısı | ❌ Gerekmez (VirusTotal hariç) |
-| Windows 10/11 veya Server 2016+ | ✅ Gerekli |
-| Administrator yetkisi | ✅ Gerekli (bazı artifact'lar için) |
-| PowerShell 5.1+ | ✅ Windows 10'da varsayılan gelir |
+| Python | Gerekmez. SAdece build için gerekli. EXE direk çalışır |
+| İnternet bağlantısı | Gerekmez (VirusTotal hariç) |
+| Windows 10/11 veya Server 2016+ | Yalnızca bu sistemlerde çalışır |
+| Administrator yetkisi | Gerekli (bazı artifact'lar için) |
 
 ---
 
@@ -125,7 +121,7 @@ dist\TEADFIR.exe [seçenekler]
 
 ---
 
-## Toplanan Artifact Kategorileri
+## Toplanan Kategoriler
 
 | # | Kategori | İçerik |
 |---|---|---|
@@ -206,35 +202,12 @@ dist\TEADFIR.exe -o C:\evidence --yara-rules C:\my_rules
 
 ---
 
-## Chain of Custody
-
-```cmd
-certutil -hashfile C:\evidence\tea_forensic_*.html SHA256
-certutil -hashfile C:\evidence\tea_forensic_*.json SHA256
-```
-
----
-
 ## Live RAM Dump (Ek Tool Gerekir)
 
 ```cmd
 winpmem_mini_x64.exe C:\evidence\memory.dmp
 volatility3 -f memory.dmp windows.pslist
 volatility3 -f memory.dmp windows.malfind
-```
-
----
-
-## 4688 Process Creation Logları İçin Group Policy
-
-```
-Computer Configuration → Windows Settings → Security Settings →
-Advanced Audit Policy → Detailed Tracking →
-  Audit Process Creation: Success ✓
-
-Computer Configuration → Administrative Templates →
-System → Audit Process Creation →
-  Include command line in process creation events: Enabled ✓
 ```
 
 ---
@@ -248,7 +221,6 @@ System → Audit Process Creation →
 | Hollow process (tam) | Kernel erişimi olmadan tam VirtualQueryEx yapılamaz — indikatör düzeyinde |
 | Fileless malware | Diske düşmeyen zararlılar YARA/hash ile yakalanamaz — Volatility gerekir |
 | Şifreli volume | BitLocker/VeraCrypt volume artifact vermiyor |
-| WhatsApp Desktop | Store versiyonu veritabanları DPAPI-NG+AES ile şifreli, standart araçlarla okunamaz |
 
 ---
 
