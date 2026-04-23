@@ -37,11 +37,10 @@ def elevate():
 
 def print_banner():
     banner = r"""
-  ____  ____  _____     ___    _
- |  _ \|  _ \|_ _\ \   / / \  | |
- | |_) | |_) || | \ \ / / _ \ | |
- |  __/|  _ < | |  \ V / ___ \| |___
- |_|   |_| \_\___|  \_/_/   \_\_____|
+  _____   ____  _____
+    |     |     |   |
+    |     |--   |||||
+    |     |___  |   |
 
   F O R E N S I C   C O L L E C T O R   v1.0.0
   TEA Security -- Windows Artifact Acquisition
@@ -198,7 +197,7 @@ def main():
     print(f"  [+] Report size: {html_size:.1f} MB")
     print()
     print("  ----------------------------------------------")
-    print("  TEA Security -- DFIR Team")
+    print("  TEA Security -- Forensic")
     print("  Open the HTML file in any browser to review.")
     print("  ----------------------------------------------")
     print()
