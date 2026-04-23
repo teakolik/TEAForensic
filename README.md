@@ -67,6 +67,13 @@ TEADFIR.exe --no-elevate
 
 # Birden fazla seçenek
 TEADFIR.exe -o C:\evidence --json
+
+# Virustotal 
+dist\TEADFIR.exe -o C:\evidence --json --vt-key YOUR_FREE_API_KEY
+
+# Yara Kullan
+dist\TEADFIR.exe -o C:\evidence --yara-rules C:\my_rules
+
 ```
 
 ### Çıktı Dosyaları
@@ -110,6 +117,8 @@ C:\evidence\
 
 4. **Browser SQLite DB'leri**: History, Cookies gibi dosyalar kilitli olabilir.
    DB Browser for SQLite veya Hindsight ile analiz edin.
+
+5. ioc\hashes.txt dosyasına kendi IOC feed'lerinden SHA256 hash'lerini ekleyebilirsin — her satıra bir hash, # ile yorum bırak!
 
 ---
 
