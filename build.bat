@@ -1,9 +1,6 @@
 @echo off
 :: ────────────────────────────────────────────────────
 :: TEA Forensic Collector - EXE Build Script
-:: Requirements: Python 3.8+, PyInstaller
-:: Run: build.bat  (proje root'undan calistirin)
-:: Output: dist\TEADFIR.exe
 :: ────────────────────────────────────────────────────
 
 echo.
@@ -18,31 +15,38 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-:: Install/update dependencies
+:: Install/update PyInstaller
 echo  [*] Installing dependencies...
 python -m pip show pyinstaller >nul 2>&1
 if %errorlevel% neq 0 (
     python -m pip install pyinstaller --quiet
 )
 
-:: yara-python — yoksa uyar ama build'i durdurma
-python -m pip show yara-python >nul 2>&1
+:: yara-python — pre-built wheel dene, olmazsa devam et
+python -c "import yara_x" >nul 2>&1
 if %errorlevel% neq 0 (
-    echo  [*] Installing yara-python...
-    python -m pip install yara-python --quiet
+    echo  [*] Trying yara-python pre-built wheel...
+    python -m pip install yara-x --quiet 2>&1
     if %errorlevel% neq 0 (
-        echo  [!] yara-python kurulamadi. YARA tarama ozelligi devre disi olacak.
+        echo  [!] yara-python pre-built wheel bulunamadi.
+        echo  [!] Python %PYTHON_VERSION% icin C++ Build Tools gerekiyor.
+        echo  [!] YARA tarama ozelligi bu build'de devre disi olacak.
+        echo  [!] Cozum: https://visualstudio.microsoft.com/visual-cpp-build-tools/
         echo  [!] Build devam ediyor...
+    ) else (
+        echo  [+] yara-python kuruldu.
     )
+) else (
+    echo  [+] yara-python zaten kurulu.
 )
 
-:: Clean previous build artifacts
+:: Clean
 echo  [*] Cleaning previous build...
 if exist dist rmdir /s /q dist
 if exist build rmdir /s /q build
 if exist src\__pycache__ rmdir /s /q src\__pycache__
 
-:: Build EXE
+:: Build EXE — add-data için mutlak path kullan
 echo  [*] Building EXE...
 
 python -m PyInstaller ^
@@ -54,17 +58,17 @@ python -m PyInstaller ^
     --hidden-import=winreg ^
     --hidden-import=ctypes ^
     --hidden-import=subprocess ^
-    --hidden-import=yara ^
-    --add-data "ioc;ioc" ^
-    --add-data "yara_rules;yara_rules" ^
+    --hidden-import=yara_x ^
+    --add-data "%~dp0ioc;ioc" ^
+    --add-data "%~dp0yara_rules;yara_rules" ^
     --exclude-module=tkinter ^
     --exclude-module=matplotlib ^
     --exclude-module=numpy ^
     --exclude-module=PIL ^
-    --distpath dist ^
-    --workpath build ^
-    --specpath build ^
-    src\main.py
+    --distpath "%~dp0dist" ^
+    --workpath "%~dp0build" ^
+    --specpath "%~dp0build" ^
+    "%~dp0src\main.py"
 
 if %errorlevel% neq 0 (
     echo  [!] Build FAILED.
@@ -72,15 +76,14 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-:: Cleanup build artifacts
-if exist build rmdir /s /q build
+if exist "%~dp0build" rmdir /s /q "%~dp0build"
 
 echo.
 echo  [+] Build successful!
 echo  [+] Output: dist\TEADFIR.exe
 echo.
 
-for %%A in (dist\TEADFIR.exe) do echo  [+] Size: %%~zA bytes
+for %%A in ("%~dp0dist\TEADFIR.exe") do echo  [+] Size: %%~zA bytes
 
 echo.
 echo  USAGE:

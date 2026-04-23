@@ -1,1 +1,10 @@
-yara-python>=4.3.0
+# TEA Forensic Collector - Python Dependencies
+# Build için: pip install -r requirements.txt
+#
+# yara-x: C++ Build Tools GEREKTIRMEZ (önerilen)
+yara-x>=0.11.0
+#
+# yara-python: Tam YARA desteği ama C++ Build Tools gerekir
+# Aktifleştirmek için üstteki yara-x satırını # ile kapatıp
+# alttaki satırın başındaki # işaretini kaldırın:
+# yara-python>=4.3.0

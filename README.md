@@ -1,124 +1,241 @@
-# TEA Windows Forensic Acquisition Tool
+# TEA DFIR Forensic Collector
+
+**Windows Forensic Artifact Acquisition & Malware Detection Tool**  
+TEA Security | v1.2.0
+
+---
 
 ## Genel Bakış
 
 TEA Forensic Collector, Windows sistemlerinden kapsamlı forensic artifact toplayan,
-sonuçları **tek, bağımsız HTML raporu** olarak sunan bir DFIR aracıdır.
+zararlı yazılım tespiti yapan ve sonuçları **tek, bağımsız HTML raporu** olarak sunan
+bir DFIR aracıdır.
 
-Binalyze AIR'ın temel forensic toplama yeteneklerini modellemektedir.
+**Build edildikten sonra hedef makinede Python kurulumu gerekmez.**  
+`TEADFIR.exe` tek dosyadır, tüm bağımlılıklar içine gömülüdür.
+
+---
+
+## Hızlı Başlangıç
+
+### Adım 1 — Build (geliştirici makinesi, bir kez yapılır)
+
+```cmd
+REM Python kurulu olmalı (sadece build için gerekli)
+REM İndirme: https://www.python.org/downloads/
+REM KRİTİK: Kurulumda "Add python.exe to PATH" işaretli olmalı
+
+REM 1. yara-x kur (C++ Build Tools gerektirmez)
+python -m pip install yara-x
+
+REM 2. EXE derle (PowerShell'den .\build.bat, CMD'den build.bat)
+cd C:\tea-forensic
+.\build.bat
+
+REM Çıktı: dist\TEADFIR.exe  (~16MB, bağımsız)
+```
+
+### Adım 2 — Çalıştır (hedef makine — hiçbir şey kurulmaz)
+
+```cmd
+REM Temel kullanım — C:\evidence klasörü yoksa otomatik oluşturulur
+dist\TEADFIR.exe -o C:\evidence --json
+
+REM VirusTotal entegrasyonu ile (API key gerekir)
+dist\TEADFIR.exe -o C:\evidence --json --vt-key YOUR_FREE_API_KEY
+
+REM UAC olmadan (bazı artifact'lar eksik kalabilir)
+dist\TEADFIR.exe -o C:\evidence --no-elevate
+```
+
+---
+
+## Sık Sorulan Sorular
+
+**❓ `-o C:\evidence` klasörü önceden oluşturmam gerekiyor mu?**  
+Hayır. Klasör yoksa EXE otomatik oluşturur.
+
+**❓ Hedef makinede Python kurulu olmalı mı?**  
+Hayır. Build sırasında PyInstaller tüm kütüphaneleri EXE içine gömer.
+`TEADFIR.exe` tek başına çalışır, Python gerektirmez.
+
+**❓ `--yara-rules` klasörü oluşturmam gerekiyor mu?**  
+Hayır. YARA kuralları (`yara_rules/common.yar`) build sırasında EXE içine gömülür.
+`--yara-rules` sadece **ek özel kural eklemek** istersen kullanılır:
+
+```cmd
+mkdir C:\my_rules
+copy C:\tea-forensic\yara_rules\common.yar C:\my_rules\
+REM Kendi .yar dosyalarını ekle
+dist\TEADFIR.exe -o C:\evidence --yara-rules C:\my_rules
+```
+
+**❓ YARA çalışıyor mu nasıl anlarım?**  
+HTML raporda `YARA Scan` bölümünde `BACKEND: yara-x` ve `RULES_LOADED: 1+` görünüyorsa aktif.
+
+**❓ yara-python kurulmuyor, C++ hatası alıyorum.**  
+`yara-python` yerine `yara-x` kullan — C++ Build Tools gerektirmez:
+```cmd
+python -m pip install yara-x
+```
+
+**❓ IOC listesini nasıl güncellerim?**  
+`ioc\hashes.txt` ve `ioc\network_ioc.txt` dosyalarını düzenle, ardından `.\build.bat` ile
+yeniden build al. Güncel feed kaynakları: MalwareBazaar, Abuse.ch, MISP, OpenCTI.
+
+---
+
+## Komut Satırı Seçenekleri
+
+```
+dist\TEADFIR.exe [seçenekler]
+
+  -o, --output DIR        Çıktı dizini (yoksa otomatik oluşturulur)
+  --json                  HTML'ye ek olarak ham JSON da kaydet
+  --vt-key API_KEY        VirusTotal API key (ücretsiz: virustotal.com)
+  --yara-rules DIR        Özel YARA kural dizini — OPSİYONEL
+                          Belirtilmezse EXE içindeki kurallar kullanılır
+  --no-elevate            UAC yükseltme isteğini atla
+```
+
+---
+
+## Çalışma Gereksinimleri (Hedef Makine)
+
+| Gereksinim | Durum |
+|---|---|
+| Python | ❌ Gerekmez |
+| İnternet bağlantısı | ❌ Gerekmez (VirusTotal hariç) |
+| Windows 10/11 veya Server 2016+ | ✅ Gerekli |
+| Administrator yetkisi | ✅ Gerekli (bazı artifact'lar için) |
+| PowerShell 5.1+ | ✅ Windows 10'da varsayılan gelir |
+
+---
+
+## Build Gereksinimleri (Geliştirici Makinesi)
+
+| Gereksinim | Notlar |
+|---|---|
+| **Python 3.8+** | Sadece build için. https://www.python.org/downloads/ |
+| **yara-x** | `python -m pip install yara-x` — C++ gerektirmez |
+| **PyInstaller** | `build.bat` tarafından otomatik kurulur |
+
+> **yara-python alternatifi:** Tam YARA desteği için C++ Build Tools (700MB) gerekir.
+> Python 3.14 için pre-built wheel yoktur. `yara-x` önerilir.
 
 ---
 
 ## Toplanan Artifact Kategorileri
 
-| Kategori | Detay |
-|---|---|
-| **System Info** | Hostname, OS version, timezone, IP config, DNS cache |
-| **Process List** | PID, PPID, commandline, path, SHA256 hash, CPU/RAM |
-| **Network** | Netstat, listening ports, established connections, ARP, routing, Wi-Fi profiles, firewall rules |
-| **Registry** | Run/RunOnce (HKLM+HKCU), Winlogon, AppInit, LSA, Image File Execution Options, yüklü yazılımlar |
-| **Event Logs** | Security (4624/4625/4648/4672/4720...), System errors, PowerShell Script Block (4104), Task Scheduler, Defender, RDP |
-| **Filesystem** | Prefetch, Recent files, TEMP executables, Alternate Data Streams, recently modified System32 files |
-| **Browser** | Chrome/Edge/Firefox artifact paths & metadata, Chrome extensions, Downloads |
-| **Tasks & Services** | Tüm scheduled tasks, çalışan servisler + binary hash, non-standard path servisleri, startup items |
-| **Memory** | Physical RAM info, top processes by RAM, pagefile, suspicious injected modules, RAM dump guidance |
-| **Users** | Local users, groups, Administrators üyeleri, aktif oturumlar, son logon'lar |
+| # | Kategori | İçerik |
+|---|---|---|
+| 1 | **System Info** | Hostname, OS, mimari, timezone, uptime, IP config |
+| 2 | **Process List** | PID, PPID, commandline, path, SHA256, CPU/RAM |
+| 3 | **Network** | Netstat, listening ports, established bağlantılar, ARP, routing, DNS cache, Wi-Fi, firewall |
+| 4 | **Registry** | Run/RunOnce (HKLM+HKCU), Winlogon, AppInit, LSA, IFEO, yüklü yazılımlar |
+| 5 | **Event Logs** | 4624/4625/4648/4672/4688/4776, log silme (1102/104), PS ScriptBlock, WMI, BITS, Sysmon, RDP, brute force özeti |
+| 6 | **Filesystem** | Prefetch, recent files, TEMP executables+hash, ADS, son değişen System32 dosyaları |
+| 7 | **Browser** | Chrome/Edge/Firefox artifact path+metadata, Chrome extensions, Downloads+hash |
+| 8 | **Tasks & Services** | Scheduled tasks, çalışan servisler+hash, non-standard paths, startup items, drivers |
+| 9 | **Memory** | RAM kullanımı, top process'ler, pagefile, suspicious modules |
+| 10 | **Users** | Local users, groups, Administrators, aktif oturumlar, son logon'lar |
 
 ---
 
-## Kurulum & Build
+## Zararlı Yazılım Tespit Modülleri
 
-### Gereksinimler
-- Windows 10/11 veya Windows Server 2016+
-- Python 3.8+ (build için)
-- Administrator yetkisi (runtime'da)
+| # | Modül | Yöntem |
+|---|---|---|
+| 11 | **IOC Hash Match** | Process/servis SHA256 → `ioc/hashes.txt` karşılaştırması |
+| 12 | **LOLBAS Detection** | Process commandline'da `powershell -enc`, `rundll32 scrobj`, `certutil -decode` vb. |
+| 13 | **Webshell Scan** | IIS/Apache/XAMPP dizinlerinde PHP/ASP/JSP zararlı pattern taraması |
+| 14 | **YARA Scan** | TEMP, System32, Downloads, web dizinlerinde kural tabanlı dosya taraması |
+| 15 | **VirusTotal** | Toplanan hash'leri VT API v3 ile sorgular (API key gerekir) |
+| 16 | **Parent-Child Anomaly** | Office→shell spawn, beklenmedik PPID, process masquerade, svchost -k eksikliği |
+| 17 | **Unsigned Processes** | Hash mismatch / imzasız / güvenilmeyen sertifikalı process tespiti |
+| 18 | **Network IOC** | Aktif bağlantılar ve DNS cache → `ioc/network_ioc.txt` C2 IP/domain karşılaştırması |
+| 19 | **Hollow Process** | WMI path vs Get-Process path uyumsuzluğu, commandline/exe mismatch |
 
-### EXE Build
-```cmd
-# Projeyi klonla veya kopyala
-cd tea-forensic
+---
 
-# EXE derle
-build.bat
+## IOC Dosyaları
+
+### `ioc/hashes.txt` — Bilinen zararlı SHA256 hash listesi
 ```
+# Yorum satırı
+27c5b5b6e7d9a...   (SHA256, bir satıra bir hash)
+```
+Güncel feed: https://bazaar.abuse.ch/export/
 
-Çıktı: `dist\TEADFIR.exe`
+### `ioc/network_ioc.txt` — Bilinen kötü IP ve domain listesi
+```
+IP:45.142.212.100
+DOMAIN:malware-c2.example.com
+185.220.101.45          (prefix olmadan da çalışır)
+```
+Güncel feed: https://feodotracker.abuse.ch/downloads/ipblocklist.csv
 
-### Bağımlılıklar
-Sadece Python standart kütüphanesi kullanılmaktadır (winreg, subprocess, ctypes, json, os, datetime).
-Üçüncü parti kütüphane yoktur — kolay deployment ve AV false positive azaltımı için.
+> IOC listesini güncelledikten sonra `.\build.bat` ile yeniden build al.
 
 ---
 
-## Kullanım
+## YARA Kuralları
 
+### Mevcut kurallar (`yara_rules/common.yar`) — EXE içine gömülü
+Mimikatz, Meterpreter, Cobalt Strike, PowerShell obfuscation,
+Webshell (PHP/ASPX/JSP), AsyncRAT, LOLBAS, Ransomware, Credential harvesting
+
+### Özel kural ekleme
 ```cmd
-# Temel kullanım (UAC prompt açılır, mevcut dizine rapor yazar)
-TEADFIR.exe
-
-# Çıktı dizini belirt
-TEADFIR.exe -o C:\evidence
-
-# JSON da kaydet (SIEM import için)
-TEADFIR.exe --json
-
-# UAC olmadan çalıştır (eksik artifact uyarısı ile)
-TEADFIR.exe --no-elevate
-
-# Birden fazla seçenek
-TEADFIR.exe -o C:\evidence --json
-
-# Virustotal 
-dist\TEADFIR.exe -o C:\evidence --json --vt-key YOUR_FREE_API_KEY
-
-# Yara Kullan
+mkdir C:\my_rules
+copy C:\tea-forensic\yara_rules\common.yar C:\my_rules\
+copy my_custom.yar C:\my_rules\
 dist\TEADFIR.exe -o C:\evidence --yara-rules C:\my_rules
-
-```
-
-### Çıktı Dosyaları
-```
-C:\evidence\
-├── tea_forensic_HOSTNAME_20250101_120000.html   # Ana rapor
-└── tea_forensic_HOSTNAME_20250101_120000.json   # Ham veri (--json ile)
 ```
 
 ---
 
 ## HTML Rapor Özellikleri
 
-- **Sidebar navigasyon** — Tüm kategorilere tek tıkla erişim
-- **Collapsible sections** — Gürültüyü azaltmak için bölümler açılır/kapanır
-- **Otomatik indicator tespiti** — TEMP'teki EXE, ADS varlığı, non-standard service path
-- **Arama** — Ctrl+F ile rapor içi tam metin arama
+- **Indicator tıklaması** — Her alarm badge'ine tıklayınca ilgili bölüme smooth scroll + highlight
+- **Sidebar navigasyon** — Tüm 19 kategoriye tek tıkla erişim
+- **Collapsible sections** — Bölümler açılır/kapanır
+- **CRITICAL / HIGH / MEDIUM** renk kodlaması
+- **Ctrl+F** ile rapor içi tam metin arama
 - **Self-contained** — İnternet bağlantısı gerektirmez, her tarayıcıda açılır
-- **Print ready** — Tüm bölümler açık şekilde yazdırılır
 
 ---
 
-## Güvenlik Notları
+## Chain of Custody
 
-1. **Chain of Custody**: Raporu üretir üretmez SHA256 hash alın.
-   ```cmd
-   certutil -hashfile tea_forensic_*.html SHA256
-   ```
+```cmd
+certutil -hashfile C:\evidence\tea_forensic_*.html SHA256
+certutil -hashfile C:\evidence\tea_forensic_*.json SHA256
+```
 
-2. **Live RAM Dump için**: Winpmem veya DumpIt kullanın (ayrı tool, kernel driver gerektirir).
-   ```cmd
-   winpmem_mini_x64.exe memory.dmp
-   ```
+---
 
-3. **Volatility Analizi**:
-   ```cmd
-   volatility3 -f memory.dmp windows.pslist
-   volatility3 -f memory.dmp windows.netscan
-   volatility3 -f memory.dmp windows.malfind
-   ```
+## Live RAM Dump (Ek Tool Gerekir)
 
-4. **Browser SQLite DB'leri**: History, Cookies gibi dosyalar kilitli olabilir.
-   DB Browser for SQLite veya Hindsight ile analiz edin.
+```cmd
+winpmem_mini_x64.exe C:\evidence\memory.dmp
+volatility3 -f memory.dmp windows.pslist
+volatility3 -f memory.dmp windows.malfind
+```
 
-5. ioc\hashes.txt dosyasına kendi IOC feed'lerinden SHA256 hash'lerini ekleyebilirsin — her satıra bir hash, # ile yorum bırak!
+---
+
+## 4688 Process Creation Logları İçin Group Policy
+
+```
+Computer Configuration → Windows Settings → Security Settings →
+Advanced Audit Policy → Detailed Tracking →
+  Audit Process Creation: Success ✓
+
+Computer Configuration → Administrative Templates →
+System → Audit Process Creation →
+  Include command line in process creation events: Enabled ✓
+```
 
 ---
 
@@ -126,36 +243,34 @@ C:\evidence\
 
 | Kısıt | Açıklama |
 |---|---|
-| RAM dump | Kernel driver gerektiriyor, bu tool sadece process/module listesi alıyor |
-| Browser history içeriği | SQLite lock nedeniyle içerik okunamıyor, metadata toplanıyor |
-| MFT raw parse | `fsutil` ile limitli bilgi; tam MFT için `mft2csv` veya `analyzeMFT` önerilir |
-| Encrypted volumes | BitLocker/VeraCrypt volume'ları artifact vermiyor |
-| Anti-forensic tools | Wipe/shred edilmiş dosyalar görünmüyor |
+| RAM dump | Kernel driver gerektirir — process/module metadata alınır |
+| Browser history içeriği | SQLite lock nedeniyle içerik okunamaz, metadata toplanır |
+| Hollow process (tam) | Kernel erişimi olmadan tam VirtualQueryEx yapılamaz — indikatör düzeyinde |
+| Fileless malware | Diske düşmeyen zararlılar YARA/hash ile yakalanamaz — Volatility gerekir |
+| Şifreli volume | BitLocker/VeraCrypt volume artifact vermiyor |
+| WhatsApp Desktop | Store versiyonu veritabanları DPAPI-NG+AES ile şifreli, standart araçlarla okunamaz |
 
 ---
 
-## Mimarı
+## Proje Yapısı
 
 ```
 tea-forensic/
 ├── src/
-│   ├── main.py         # Entry point, UAC, orchestrator
-│   ├── collector.py    # Artifact toplama modülleri (10 kategori)
-│   └── reporter.py     # HTML rapor üretici
-├── build.bat           # PyInstaller build scripti
-├── version_info.txt    # EXE metadata (PE versyon bilgisi)
-└── README.md           # Bu dosya
+│   ├── main.py          Entry point, argümanlar, UAC, orchestrator
+│   ├── collector.py     19 artifact/tespit modülü
+│   └── reporter.py      HTML rapor üretici + indicator engine
+├── ioc/
+│   ├── hashes.txt       Bilinen zararlı SHA256 listesi (düzenlenebilir)
+│   └── network_ioc.txt  Bilinen kötü IP/domain listesi (düzenlenebilir)
+├── yara_rules/
+│   └── common.yar       12 YARA kuralı — EXE içine gömülür
+├── requirements.txt     Python bağımlılıkları
+├── build.bat            PyInstaller build scripti
+├── version_info.txt     EXE PE versiyon bilgisi
+└── README.md            Bu dosya
 ```
 
 ---
 
-## Gelecek Geliştirmeler (Roadmap)
-
-- [ ] YARA rule matching (yüklenen dosyalar üzerinde)
-- [ ] Sigma rule entegrasyonu (event log analizi)
-- [ ] Timeline view (tüm artifact'ları kronolojik görünüm)
-- [ ] IOC comparison (bilinen hash/IP listesiyle karşılaştırma)
-
----
-
-**TEA Security** | tea.com.tr | v1.0.0
+**TEA Security** | v1.2.0

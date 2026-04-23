@@ -148,35 +148,117 @@ def generate_html_report(data, output_path):
     fs = data.get("filesystem", {})
     temp_exes = fs.get("temp_executables", "")
     if _is_valid_result(temp_exes):
-        indicators.append({"level": "HIGH", "msg": "Executable files detected in TEMP directories"})
+        indicators.append({"level": "HIGH",     "msg": "Executable files detected in TEMP directories", "section": "filesystem"})
 
     # Check for alternate data streams
     ads = fs.get("ads_detection", "")
     if _is_valid_result(ads):
-        indicators.append({"level": "HIGH", "msg": "Alternate Data Streams (ADS) detected on filesystem"})
+        indicators.append({"level": "HIGH",     "msg": "Alternate Data Streams (ADS) detected on filesystem", "section": "filesystem"})
 
     # Suspicious service paths
     susp_services = data.get("tasks_services", {}).get("services_suspicious_paths", "")
     if _is_valid_result(susp_services):
-        indicators.append({"level": "MEDIUM", "msg": "Services with non-standard binary paths detected"})
+        indicators.append({"level": "MEDIUM",   "msg": "Services with non-standard binary paths detected", "section": "tasks_services"})
+
+    # Son 5 dakikada yazılan dosyalar
+    rw = data.get("filesystem", {}).get("recently_written_files", "")
+    if rw and rw not in ("[]","{}") and "[ERROR]" not in str(rw) and "[TIMEOUT]" not in str(rw):
+        try:
+            import json as _j3
+            rw_items = _j3.loads(rw) if isinstance(rw, str) else []
+            if isinstance(rw_items, dict): rw_items = [rw_items]
+            if rw_items:
+                indicators.append({"level": "MEDIUM", "msg": f"Active Write: {len(rw_items)} file(s) written in last 5 minutes", "section": "filesystem"})
+        except Exception:
+            pass
+
+    # Log temizleme tespiti
+    log_cleared = data.get("event_logs", {}).get("security_log_cleared", "")
+    if _is_valid_result(log_cleared) and log_cleared not in ("[]", "{}"):
+        indicators.append({"level": "CRITICAL", "msg": "Event log cleared — possible anti-forensic activity (EID 1102/104)", "section": "event_logs"})
+
+    # Brute force: son 24 saatte çok sayıda başarısız logon
+    bf = data.get("event_logs", {}).get("brute_force_summary", "")
+    if _is_valid_result(bf) and bf not in ("[]", "{}"):
+        try:
+            import json as _json
+            bf_data = _json.loads(bf) if isinstance(bf, str) else bf
+            if isinstance(bf_data, list) and any(int(x.get("FailCount", 0)) > 10 for x in bf_data):
+                indicators.append({"level": "HIGH",     "msg": "Brute force suspected: >10 failed logons for same account in 24h", "section": "event_logs"})
+        except Exception:
+            pass
+
+    # Scheduled task değişikliği
+    stc = data.get("event_logs", {}).get("scheduled_task_changes", "")
+    if _is_valid_result(stc) and stc not in ("[]", "{}"):
+        indicators.append({"level": "MEDIUM",   "msg": "Scheduled task created/modified/deleted (EID 4698-4702)", "section": "event_logs"})
+
+    # Son 30 gün task
+    rt_data = data.get("tasks_services", {}).get("recent_tasks_30d", "")
+    if rt_data and rt_data not in ("[]", "{}") and "[ERROR]" not in str(rt_data):
+        try:
+            import json as _j2
+            rt_items = _j2.loads(rt_data) if isinstance(rt_data, str) else []
+            if isinstance(rt_items, dict): rt_items = [rt_items]
+            if rt_items:
+                indicators.append({"level": "MEDIUM", "msg": f"Recent Tasks: {len(rt_items)} scheduled task(s) created/modified in last 30 days", "section": "tasks_services"})
+        except Exception:
+            pass
+
+    # Gizli iframe/subframe ziyaretler
+    for bkey in ["chrome_history", "edge_history"]:
+        bh = data.get("browsers", {}).get(bkey, {})
+        hv = bh.get("hidden_visits", []) if isinstance(bh, dict) else []
+        if hv:
+            indicators.append({"level": "MEDIUM", "msg": f"Hidden Browser Visits: {len(hv)} iframe/subframe visit(s) in {bkey.split('_')[0].title()}", "section": "browser_history"})
+
+    # Parent-child anomali
+    pc_data = data.get("parent_child", {})
+    pc_findings = pc_data.get("findings", [])
+    critical_pc = [f for f in pc_findings if f.get("severity") == "CRITICAL"]
+    if critical_pc:
+        indicators.append({"level": "CRITICAL", "msg": f"Parent-Child Anomaly: {len(critical_pc)} Office/browser → shell spawn detected", "section": "parent_child"})
+    elif pc_findings:
+        indicators.append({"level": "HIGH",     "msg": f"Parent-Child Anomaly: {len(pc_findings)} suspicious process relationship(s)", "section": "parent_child"})
+
+    # İmzasız process
+    up_data = data.get("unsigned_processes", {})
+    up_findings = up_data.get("findings", [])
+    critical_up = [f for f in up_findings if f.get("severity") == "CRITICAL"]
+    if critical_up:
+        indicators.append({"level": "CRITICAL", "msg": f"Unsigned/Tampered: {len(critical_up)} process(es) with hash mismatch or untrusted signature", "section": "unsigned_processes"})
+    elif up_findings:
+        indicators.append({"level": "HIGH",     "msg": f"Unsigned Process: {len(up_findings)} unsigned process(es) in suspicious paths", "section": "unsigned_processes"})
+
+    # Network IOC
+    nioc_data = data.get("network_ioc", {})
+    nioc_matches = nioc_data.get("matches", [])
+    if nioc_matches:
+        indicators.append({"level": "CRITICAL", "msg": f"Network IOC: {len(nioc_matches)} connection(s) to known malicious IP/domain", "section": "network_ioc"})
+
+    # Hollow process
+    hp_data = data.get("hollow_process", {})
+    hp_total = hp_data.get("total_findings", 0)
+    if hp_total > 0:
+        indicators.append({"level": "HIGH",     "msg": f"Hollow Process: {hp_total} suspicious memory/path indicator(s)", "section": "hollow_process"})
 
     # IOC hash matches
     ioc_data = data.get("ioc_matches", {})
     ioc_matches = ioc_data.get("matches", [])
     if ioc_matches:
-        indicators.append({"level": "CRITICAL", "msg": f"IOC Hash Match: {len(ioc_matches)} known malicious file(s) detected"})
+        indicators.append({"level": "CRITICAL", "msg": f"IOC Hash Match: {len(ioc_matches)} known malicious file(s) detected", "section": "ioc_matches"})
 
     # LOLBAS findings
     lolbas_data = data.get("lolbas", {})
     lolbas_findings = lolbas_data.get("findings", [])
     if lolbas_findings:
-        indicators.append({"level": "HIGH", "msg": f"LOLBAS Abuse: {len(lolbas_findings)} suspicious process(es) detected"})
+        indicators.append({"level": "HIGH",     "msg": f"LOLBAS Abuse: {len(lolbas_findings)} suspicious process(es) detected", "section": "lolbas"})
 
     # Webshell findings
     webshell_data = data.get("webshell", {})
     webshell_findings = webshell_data.get("findings", [])
     if webshell_findings:
-        indicators.append({"level": "CRITICAL", "msg": f"Webshell: {len(webshell_findings)} suspicious web file(s) detected"})
+        indicators.append({"level": "CRITICAL", "msg": f"Webshell: {len(webshell_findings)} suspicious web file(s) detected", "section": "webshell"})
 
     # VirusTotal findings
     vt_data = data.get("virustotal", {})
@@ -185,15 +267,15 @@ def generate_html_report(data, output_path):
         mal = sum(1 for f in vt_findings if f.get("verdict") == "MALICIOUS")
         sus = sum(1 for f in vt_findings if f.get("verdict") == "SUSPICIOUS")
         if mal > 0:
-            indicators.append({"level": "CRITICAL", "msg": f"VirusTotal: {mal} MALICIOUS file(s) confirmed"})
+            indicators.append({"level": "CRITICAL", "msg": f"VirusTotal: {mal} MALICIOUS file(s) confirmed", "section": "virustotal"})
         if sus > 0:
-            indicators.append({"level": "HIGH", "msg": f"VirusTotal: {sus} SUSPICIOUS file(s) flagged"})
+            indicators.append({"level": "HIGH",     "msg": f"VirusTotal: {sus} SUSPICIOUS file(s) flagged", "section": "virustotal"})
 
     # YARA findings
     yara_data = data.get("yara", {})
     yara_findings = yara_data.get("findings", [])
     if yara_findings:
-        indicators.append({"level": "HIGH", "msg": f"YARA: {len(yara_findings)} file(s) matched malware rules"})
+        indicators.append({"level": "HIGH",     "msg": f"YARA: {len(yara_findings)} file(s) matched malware rules", "section": "yara"})
 
     # Summary stats
     sections = [
@@ -203,8 +285,11 @@ def generate_html_report(data, output_path):
         ("registry",      "Registry Persistence",         "🔑"),
         ("event_logs",    "Event Logs",                   "📋"),
         ("filesystem",    "Filesystem Artifacts",         "📁"),
+        ("active_files",  "Active Files (last 5min)",     "✍"),
         ("browsers",      "Browser Artifacts",            "🌍"),
+        ("browser_history","Browser History",               "🔍"),
         ("tasks_services","Scheduled Tasks & Services",   "⏱"),
+        ("recent_tasks",   "Recent Tasks (30d)",            "🆕"),
         ("memory",        "Memory Information",           "💾"),
         ("users",         "User Accounts",                "👤"),
         ("ioc_matches",   "IOC Hash Matches",             "☠"),
@@ -212,6 +297,10 @@ def generate_html_report(data, output_path):
         ("webshell",      "Webshell Scan",                "🕷"),
         ("yara",          "YARA Scan",                    "🔬"),
         ("virustotal",    "VirusTotal Reputation",        "🛡"),
+        ("parent_child",   "Parent-Child Anomalies",       "🌲"),
+        ("unsigned_processes", "Unsigned Processes",       "🔓"),
+        ("network_ioc",    "Network IOC Matches",          "🕸"),
+        ("hollow_process", "Hollow Process Detection",     "👻"),
     ]
 
     # Nav items
@@ -227,9 +316,17 @@ def generate_html_report(data, output_path):
     ind_html = ""
     if not indicators:
         ind_html = '<div class="indicator clear">✓ No automated indicators triggered</div>'
-    for ind in indicators:
-        lvl_cls = "critical" if ind["level"] == "CRITICAL" else ("high" if ind["level"] == "HIGH" else "medium")
-        ind_html += f'<div class="indicator {lvl_cls}"><span class="ind-level">{ind["level"]}</span> {ind["msg"]}</div>'
+    for i, ind in enumerate(indicators):
+        lvl_cls   = "critical" if ind["level"] == "CRITICAL" else ("high" if ind["level"] == "HIGH" else "medium")
+        section   = ind.get("section", "")
+        click_attr= f'onclick="jumpToIndicator(\'{section}\');"' if section else ""
+        cursor    = "cursor:pointer;" if section else ""
+        arrow     = " ↗" if section else ""
+        title_txt = f"Click to jump to {section} section" if section else ""
+        ind_html += (
+            f'<div class="indicator {lvl_cls}" {click_attr} style="{cursor}" title="{title_txt}">'
+            f'<span class="ind-level">{ind["level"]}</span> {ind["msg"]}{arrow}</div>'
+        )
 
     # Section bodies
     sections_html = ""
@@ -578,19 +675,37 @@ body {{
 .list-item {{
     background: var(--bg);
     border: 1px solid var(--border);
-    padding: 8px 12px;
+    border-radius: 4px;
+    padding: 10px 14px;
     font-size: 11px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 6px 16px;
+    margin-bottom: 4px;
 }}
 
-.list-item.simple {{ color: var(--text2); }}
-.list-item.more {{ color: var(--text3); font-style: italic; justify-content: center; }}
+.list-item.simple {{ color: var(--text2); display: block; }}
+.list-item.more {{ color: var(--text3); font-style: italic; display: flex; justify-content: center; }}
 
-.item-field {{ display: inline-flex; align-items: center; gap: 4px; }}
-.item-key {{ color: var(--accent2); font-weight: 600; font-size: 10px; }}
-.item-val {{ color: var(--text); }}
+.item-field {{
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}}
+.item-key {{
+    color: var(--accent2);
+    font-weight: 600;
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}}
+.item-val {{
+    color: var(--text);
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+}}
 
 .string-val {{ color: var(--text); }}
 .num-val {{ color: #a8dadc; }}
@@ -709,6 +824,28 @@ body {{
 </div>
 
 <script>
+function jumpToIndicator(sectionId) {{
+    if (!sectionId) return;
+    const el = document.getElementById(sectionId);
+    if (!el) return;
+    const body = document.getElementById('body-' + sectionId);
+    const toggle = document.getElementById('toggle-' + sectionId);
+    if (body && body.classList.contains('collapsed')) {{
+        body.classList.remove('collapsed');
+        if (toggle) toggle.style.transform = 'rotate(0deg)';
+    }}
+    setTimeout(() => {{
+        el.scrollIntoView({{ behavior: 'smooth', block: 'start' }});
+        el.style.transition = 'box-shadow 0.3s ease, border-color 0.3s ease';
+        el.style.boxShadow  = '0 0 0 2px #00d4ff, 0 0 20px rgba(0,212,255,0.4)';
+        el.style.borderColor = '#00d4ff';
+        setTimeout(() => {{
+            el.style.boxShadow  = '';
+            el.style.borderColor = '';
+        }}, 2500);
+    }}, 100);
+}}
+
 function toggleSection(id) {{
     const body = document.getElementById('body-' + id);
     const toggle = document.getElementById('toggle-' + id);
@@ -758,7 +895,7 @@ document.addEventListener('keydown', (e) => {{
 
 // Collapse all sections by default except system info
 document.addEventListener('DOMContentLoaded', () => {{
-    ['processes','network','registry','event_logs','filesystem','browsers','tasks_services','memory','users','ioc_matches','lolbas','webshell','yara','virustotal'].forEach(id => {{
+    ['processes','network','registry','event_logs','filesystem','browsers','tasks_services','memory','users','browser_history','recent_tasks','active_files','ioc_matches','lolbas','webshell','yara','virustotal','parent_child','unsigned_processes','network_ioc','hollow_process'].forEach(id => {{
         const body = document.getElementById('body-' + id);
         const toggle = document.getElementById('toggle-' + id);
         if(body) {{

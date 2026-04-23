@@ -1,0 +1,43 @@
+# TEA Forensic Collector - Network IOC List
+# Format:
+#   IP:1.2.3.4          (sadece IP)
+#   DOMAIN:evil.com     (sadece domain)
+#   1.2.3.4             (prefix olmadan, otomatik algılanır)
+#   evil.com            (prefix olmadan, otomatik algılanır)
+#
+# Kaynak önerileri:
+#   - Abuse.ch Feodo Tracker: https://feodotracker.abuse.ch/downloads/ipblocklist.csv
+#   - Abuse.ch URLhaus: https://urlhaus.abuse.ch/downloads/csv/
+#   - Emerging Threats: https://rules.emergingthreats.net/blockrules/compromised-ips.txt
+#   - MISP export: IP ve domain'leri buraya yapıştırın
+#
+# ── Cobalt Strike bilinen C2'ler ──────────────────────────────────────────────
+IP:45.142.212.100
+IP:194.165.16.11
+IP:185.220.101.45
+IP:45.33.32.156
+IP:195.123.245.151
+
+# ── Metasploit/Meterpreter yaygın test adresleri ─────────────────────────────
+IP:192.168.1.100
+IP:10.0.0.1
+
+# ── Bilinen kötü amaçlı domain örnekleri ─────────────────────────────────────
+DOMAIN:malware-c2.example.com
+DOMAIN:evil-payload.xyz
+DOMAIN:update-flash-player.com
+DOMAIN:windows-update-kb.info
+
+# ── Ransomware C2 (örnek) ────────────────────────────────────────────────────
+IP:91.219.236.166
+IP:185.220.101.34
+
+# ── TOR exit node'lar (şüpheli) ──────────────────────────────────────────────
+IP:176.10.104.240
+IP:176.10.99.200
+IP:185.220.101.32
+IP:185.220.101.33
+
+# ── Kendi IOC feed'lerinizi buraya ekleyin ────────────────────────────────────
+# MISP, OpenCTI veya herhangi bir CTI platformundan export edilen
+# IP ve domain'leri bu formatta ekleyebilirsiniz.

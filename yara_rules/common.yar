@@ -218,15 +218,13 @@ rule Credential_Harvesting
         severity    = "HIGH"
         author      = "TEA Security"
     strings:
-        $c1 = "sekurlsa"           ascii nocase
-        $c2 = "lsass.exe"          ascii nocase
-        $c3 = "SAM"                ascii
-        $c4 = "SECURITY"           ascii
-        $c5 = "procdump"           ascii nocase
-        $c6 = "comsvcs.dll,MiniDump" ascii nocase
-        $c7 = "password"           ascii nocase
-        $c8 = "credential"         ascii nocase
-        $c9 = "NtlmHash"           ascii nocase
+        $c1 = "sekurlsa"                ascii nocase
+        $c2 = "lsass.exe"               ascii nocase
+        $c3 = "SAM"                     ascii
+        $c4 = "SECURITY"                ascii
+        $c5 = "procdump"                ascii nocase
+        $c6 = "comsvcs.dll,MiniDump"    ascii nocase
+        $c9 = "NtlmHash"                ascii nocase
     condition:
         ($c1 or ($c2 and ($c5 or $c6))) or
         ($c9 and 1 of ($c3,$c4))
