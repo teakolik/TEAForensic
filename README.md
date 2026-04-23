@@ -153,7 +153,6 @@ tea-forensic/
 
 - [ ] YARA rule matching (yüklenen dosyalar üzerinde)
 - [ ] Sigma rule entegrasyonu (event log analizi)
-- [ ] SIEM'e otomatik JSON push (webhook)
 - [ ] Timeline view (tüm artifact'ları kronolojik görünüm)
 - [ ] IOC comparison (bilinen hash/IP listesiyle karşılaştırma)
 
