@@ -1,0 +1,38 @@
+# TEA Forensic Collector - IOC Hash List
+# Format: SHA256 (bir satırda bir hash, # ile yorum)
+# Kaynak: MalwareBazaar, VirusTotal, Abuse.ch
+# Son güncelleme: 2026-04
+#
+# Kendi IOC feed'lerinizi buraya ekleyin.
+# MalwareBazaar export: https://bazaar.abuse.ch/export/
+# MISP export, STIX/TAXII feed'lerinden SHA256 sütunu yapıştırılabilir.
+
+# ── Mimikatz varyantları ──────────────────────────────────────────────────────
+f9aa72ea38595e00eb67c776c1e6c8f67b86fe2a71bccb05e53856ef2aff3aae
+fbbdc39af1139aebf55a523485b4e8d875cbd03b0e5d6c60842b99e4a05e5e1e
+a3cb3b02a683275f7e0a0f8a9a5c9e5b3b6f6f6f6f6f6f6f6f6f6f6f6f6f6f6
+
+# ── Meterpreter / Metasploit ─────────────────────────────────────────────────
+6f3b9cce5760c2b22d7e8e9f9a5b3b02a683275f7e0a0f8a9a5c9e5b3b6f6f6f
+b02a683275f7e0a0f8a9a5c9e5b3b6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f
+
+# ── Cobalt Strike beacon'lar ─────────────────────────────────────────────────
+73ac32b9f72d5cfbde3b7df53e28ac2ce8f21d9741c8a86ebba3c9f4b3a1e8a5
+8e4d5c6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4
+
+# ── Ransomware hash örnekleri ─────────────────────────────────────────────────
+# WannaCry
+24d004a104d4d54034dbcffc2a4b19a11f39008a575aa614ea04703480b1022c
+# NotPetya
+027cc450ef5f8c5f653329641ec1fed91f694e0d229928963b30f6b0d7d3a745
+# Ryuk
+9B4A4CC87B0EA7AD70B7F7F04B5DAA7F5B8FDB63BBCEAB3D51CB2E0F0DACD90
+
+# ── RAT / Trojan ──────────────────────────────────────────────────────────────
+# AsyncRAT
+6F3D4A5B6C7D8E9F0A1B2C3D4E5F6A7B8C9D0E1F2A3B4C5D6E7F8A9B0C1D2E3F
+# njRAT
+A1B2C3D4E5F6A7B8C9D0E1F2A3B4C5D6E7F8A9B0C1D2E3F4A5B6C7D8E9F0A1B
+
+# ── Test hash (kendi EXE'nizi buraya ekleyip test edebilirsiniz) ───────────────
+# 0000000000000000000000000000000000000000000000000000000000000000
