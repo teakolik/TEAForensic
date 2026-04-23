@@ -1,4 +1,4 @@
-# TEA DFIR Collector — Windows Forensic Acquisition Tool
+# TEA Windows Forensic Acquisition Tool
 
 ## Genel Bakış
 
